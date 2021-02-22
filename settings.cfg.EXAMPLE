@@ -2,6 +2,11 @@
 history_output_dir = ./history-files/
 history_statefile = rocketchat-history-statefile.pkl
 
+; If set to true, messages will not be retrieved for days
+; where a history file already exists, indepent of what is stored
+; in the state file
+skip_when_file_exists = False
+
 [rc-api]
 
 ; auth = token to use X-Auth-UserId (put in 'user' field)

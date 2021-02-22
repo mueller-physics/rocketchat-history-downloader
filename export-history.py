@@ -155,6 +155,8 @@ def main():
     output_dir = config_main['files']['history_output_dir']
     state_file = config_main['files']['history_statefile']
 
+    skip_if_file_exists = config_main.get('files', 'skip_when_file_exists', fallback = False)
+
     rc_auth = config_main.get('rc-api','auth', fallback='classic')
     rc_user = config_main['rc-api']['user']
     rc_pass = config_main['rc-api']['pass']
@@ -224,6 +226,8 @@ def main():
         rocket = RocketChat(rc_user, rc_pass, server_url=rc_server)
 
     sleep(polite_pause)
+    if skip_if_file_exists :
+        logger.debug("Skip set to TRUE: will not retrieve history for days where a file already exists")
 
     logger.debug('LOAD / UPDATE room state')
     assemble_state(room_state, rocket.channels_list_joined().json(), 'channels')
@@ -234,7 +238,6 @@ def main():
 
     assemble_state(room_state, rocket.groups_list().json(), 'groups')
     sleep(polite_pause)
-
 
     for channel_id, channel_data in room_state.items():
 
@@ -285,6 +288,16 @@ def main():
 
             while (t_oldest < end_time) and (t_oldest < channel_data['lastmessage']):
                 logger.info('')
+
+                if skip_if_file_exists :
+                    while ( os.path.isfile( output_dir
+                        + t_oldest.strftime('%Y-%m-%d')
+                        + '-'
+                        + channel_data['name']
+                        + '.json' )):
+                        t_oldest += ONE_DAY
+                        logger.info('skipping %s (as history file already exists)', get_rocketchat_timestamp(t_oldest))
+
                 t_latest = t_oldest + ONE_DAY - datetime.timedelta(microseconds=1)
                 logger.info('start: %s', get_rocketchat_timestamp(t_oldest))
 
