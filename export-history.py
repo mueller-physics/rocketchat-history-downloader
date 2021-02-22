@@ -36,6 +36,7 @@ import argparse
 import configparser
 import json
 import re
+import requests
 from time import sleep
 from rocketchat_API.rocketchat import RocketChat
 
@@ -162,6 +163,8 @@ def main():
     rc_pass = config_main['rc-api']['pass']
     rc_server = config_main['rc-api']['server']
 
+    file_prefix = config_main.get('files','file_prefix', fallback='');
+    file_folder = config_main.get('files','file_folder', fallback='attachments');
 
     # include and exclude rooms
     rooms_exclude = []
@@ -366,6 +369,34 @@ def main():
 
                 num_messages = len(history_data['messages'])
                 logger.info('Messages found: %s', str(num_messages))
+
+                # attachments download
+
+                for m in history_data['messages']:
+                    for a in m.get('attachments', []):
+                        if 'title_link' in a:
+                            urlname = a.get('title_link')
+                            diskname = urlname
+
+                            if urlname.startswith(file_prefix):
+                                diskname = urlname[len(file_prefix):]
+
+                            diskname = diskname.replace('/','-')
+                            diskpath = output_dir + file_folder +'/'+ diskname
+
+                            if not os.path.isfile( diskpath ):
+                                req = requests.get(rc_server + urlname,
+                                    headers={ 'X-Auth-Token': rc_pass , 'X-User-Id': rc_user })
+
+                                if req.status_code == 200 :
+                                    fout = open( diskpath, 'wb')
+                                    fout.write( req.content )
+                                    logger.debug('Downloaded attachment: ' +urlname+' --> '+diskname)
+                                else:
+                                    logger.warn('Failed to download: '+urlname)
+
+                            else:
+                                    logger.debug('Attachment exists: '+diskname)
 
                 if num_messages > 0:
                     with open(output_dir
