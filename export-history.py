@@ -50,6 +50,7 @@ VERSION = 1.1
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 SHORT_DATE_FORMAT = "%Y-%m-%d"
 ONE_DAY = datetime.timedelta(days=1)
+FOURTY_DAYS = datetime.timedelta(days=40)
 TODAY = datetime.datetime.today()
 YESTERDAY = TODAY - ONE_DAY
 NULL_DATE = datetime.datetime(1, 1, 1, 0, 0, 0, 0)
@@ -62,6 +63,17 @@ def get_rocketchat_timestamp(in_date):
     """Take in a date and return it converted to a Rocket.Chat timestamp"""
     s = in_date.strftime(DATE_FORMAT)
     return s[:-4] + 'Z'
+
+def incr_by_day_or_month(in_date, month_block):
+
+    if month_block:
+        out_date = in_date.replace(day=1)
+        out_date = out_date + FOURTY_DAYS
+        out_date = out_date.replace(day=1)
+    else:
+        out_date = in_date + ONE_DAY
+    return out_date
+
 
 
 def assemble_state(state_array, room_json, room_type):
@@ -163,6 +175,9 @@ def main():
     rc_pass = config_main['rc-api']['pass']
     rc_server = config_main['rc-api']['server']
 
+    #month_block = config_main.get('files','month_blocks', fallback=False)
+    month_block = config_main.get('files','month_blocks')
+
     file_prefix = config_main.get('files','file_prefix', fallback='');
     file_folder = config_main.get('files','file_folder', fallback='attachments');
 
@@ -232,6 +247,9 @@ def main():
     if skip_if_file_exists :
         logger.debug("Skip set to TRUE: will not retrieve history for days where a file already exists")
 
+    if month_block:
+        logger.debug("Month block set to TRUE")
+
     logger.debug('LOAD / UPDATE room state')
     assemble_state(room_state, rocket.channels_list_joined().json(), 'channels')
     sleep(polite_pause)
@@ -278,6 +296,10 @@ def main():
 
             t_latest = NULL_DATE
 
+            if month_block:
+                t_oldest = t_oldest.replace(day=1)
+                logger.info('Month mode: grabbing messages in blocks of months')
+
             if (t_oldest < end_time) and (t_oldest < channel_data['lastmessage']):
                 logger.info('Grabbing messages since '
                             + str(t_oldest)
@@ -292,16 +314,29 @@ def main():
             while (t_oldest < end_time) and (t_oldest < channel_data['lastmessage']):
                 logger.info('')
 
+                if month_block:
+                    outfilename = t_oldest.strftime('%Y-%m')+'-NN'
+                else:
+                    outfilename = t_oldest.strftime('%Y-%m-%d')
+
                 if skip_if_file_exists :
                     while ( os.path.isfile( output_dir
-                        + t_oldest.strftime('%Y-%m-%d')
+                        + outfilename
                         + '-'
                         + channel_data['name']
                         + '.json' )):
-                        t_oldest += ONE_DAY
-                        logger.info('skipping %s (as history file already exists)', get_rocketchat_timestamp(t_oldest))
 
-                t_latest = t_oldest + ONE_DAY - datetime.timedelta(microseconds=1)
+                        t_oldest = incr_by_day_or_month( t_oldest, month_block)
+
+                        if month_block:
+                            outfilename = t_oldest.strftime('%Y-%m')+'-NN'
+                        else:
+                            outfilename = t_oldest.strftime('%Y-%m-%d')
+
+                        logger.info('skipping %s (as history file already exists) '+outfilename, get_rocketchat_timestamp(t_oldest))
+
+                t_latest = incr_by_day_or_month( t_oldest, month_block) - datetime.timedelta(microseconds=1)
+
                 logger.info('start: %s', get_rocketchat_timestamp(t_oldest))
 
                 history_data_obj = {}
@@ -400,7 +435,7 @@ def main():
 
                 if num_messages > 0:
                     with open(output_dir
-                              + t_oldest.strftime('%Y-%m-%d')
+                              + outfilename
                               + '-'
                               + channel_data['name']
                               + '.json', 'wb') as f:
@@ -410,7 +445,7 @@ def main():
 
                 logger.info('end: %s', get_rocketchat_timestamp(t_latest))
                 logger.info('')
-                t_oldest += ONE_DAY
+                t_oldest = incr_by_day_or_month( t_oldest, month_block)
                 sleep(polite_pause)
 
             logger.info('------------------------\n')

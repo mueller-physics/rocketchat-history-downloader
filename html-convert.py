@@ -75,7 +75,7 @@ def main():
 
             for a in m.get('attachments', []):
 
-                logger.debug(a)
+                #logger.debug(a)
 
                 if 'title_link' in a:
                     urlname = a.get('title_link')
