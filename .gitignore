@@ -46,3 +46,9 @@ history-files/*
 # pipenv stuff
 Pipfile.lock
 
+#############
+## Misc
+#############
+
+# vim swap files
+.*.swp

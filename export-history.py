@@ -154,6 +154,7 @@ def main():
     output_dir = config_main['files']['history_output_dir']
     state_file = config_main['files']['history_statefile']
 
+    rc_auth = config_main.get('rc-api','auth', fallback='classic')
     rc_user = config_main['rc-api']['user']
     rc_pass = config_main['rc-api']['pass']
     rc_server = config_main['rc-api']['server']
@@ -200,8 +201,14 @@ def main():
         room_state = {'_meta': {'schema_version': VERSION}}
 
 
-    logger.debug('Initialize rocket.chat API connection')
-    rocket = RocketChat(rc_user, rc_pass, server_url=rc_server)
+
+    if ( rc_auth == "token"):
+        logger.debug('Initialize rocket.chat API connection (token)')
+        rocket = RocketChat(auth_token=rc_pass, user_id=rc_user, server_url=rc_server)
+    else:
+        logger.debug('Initialize rocket.chat API connection (user/password)')
+        rocket = RocketChat(rc_user, rc_pass, server_url=rc_server)
+
     sleep(polite_pause)
 
     logger.debug('LOAD / UPDATE room state')
