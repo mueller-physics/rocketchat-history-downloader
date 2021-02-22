@@ -34,6 +34,7 @@ import logging
 import pprint
 import argparse
 import configparser
+import json
 import re
 from time import sleep
 from rocketchat_API.rocketchat import RocketChat
@@ -160,6 +161,15 @@ def main():
     rc_server = config_main['rc-api']['server']
 
 
+    # include and exclude rooms
+    rooms_exclude = []
+    rooms_include = []
+
+    if  config_main.has_section('rooms') :
+        rooms_include = json.loads( config_main.get('rooms','include', fallback = "[]"))
+        rooms_exclude = json.loads( config_main.get('rooms','exclude', fallback = "[]"))
+
+
     # logging
     logger = logging.getLogger('export-history')
     logger.setLevel(logging.DEBUG)
@@ -200,6 +210,10 @@ def main():
         logger.debug('No state file at %s, so state will be created', state_file)
         room_state = {'_meta': {'schema_version': VERSION}}
 
+    if rooms_exclude:
+        logger.debug("Excluded rooms: " + ", ".join(rooms_exclude))
+    if rooms_include:
+        logger.debug("Included rooms: " + ", ".join(rooms_include))
 
 
     if ( rc_auth == "token"):
@@ -223,8 +237,18 @@ def main():
 
 
     for channel_id, channel_data in room_state.items():
+
         if channel_id != '_meta':  # skip state metadata which is not a channel
             logger.info('------------------------')
+
+            if channel_data['name'] in rooms_exclude:
+                logger.info('Skipping room (in exclude list): '+channel_data['name'])
+                continue
+
+            if rooms_include and channel_data['name'] not in rooms_include:
+                logger.info('Skipping room (not in include list): '+channel_data['name'])
+                continue
+
             logger.info('Processing room: ' + channel_id + ' - ' + channel_data['name'])
 
             logger.debug('Global start time: %s', str(start_time))

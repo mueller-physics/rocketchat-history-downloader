@@ -20,3 +20,19 @@ server = https://demo.rocket.chat
 max_msg_count_per_day = 99999
 
 pause_seconds = 1
+
+
+
+; 'rooms' section allows to exclude rooms or only archive
+; a specific list of rooms
+; exclude = [ "room1", "room2" ]
+; all room names in the exclude list (json notation) will be skipped
+; leave empty or do not specify at all to not exclude rooms
+; include = [ "room1", "room2" ]
+; if include is specified and not empty, ONLY rooms that are both in
+; the include AND not on the exclude list will be archived
+
+[rooms]
+
+;exclude = [ "room_name", "another uninteresting room" ]
+;include = [ "room_name", "the only interesting room" ]
