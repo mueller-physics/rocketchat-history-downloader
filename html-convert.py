@@ -4,6 +4,12 @@ Description:
     Converts the JSON channel history into a rudimentary HTML file
     for offline vieving
 
+Dependencies:
+    pipenv install
+        markdown - Python implementation of Markdown
+            (pipenv install markdown)
+
+
 Commands:
     pipenv run python html-convert.py channel-name
 
@@ -17,6 +23,9 @@ import pprint
 import argparse
 import configparser
 import requests
+import urllib
+import markdown
+import re   
 
 def main():
 
@@ -56,58 +65,99 @@ def main():
     outfile.write('<link rel="stylesheet" href="simple.css" />');
     outfile.write('</head><body>\n')
 
+    messages = []
+
     for filename in sorted( os.listdir(input_dir) ):
         if not filename[11:-5] == args.channel:
             continue
 
         data = json.load( open( input_dir + filename ))
+        messages += data['messages']
 
-        for m in data['messages']:
-            outfile.write('<div class="message">\n')
-            outfile.write('<div class="user">' + m['u']['name'] + '</div>\n')
+    if len(messages) == 0:
+        print("No messages found for channel: "+args.channel)
+        return
+       
+    message_dict = {}
+    for m in messages:
+        message_dict[m.get('_id','null')] = m
 
-            timestamp = m['ts'];
+    # sort messages by timestamp
+    messages = sorted( messages, key=lambda ts: ts['ts'])
+ 
 
-            outfile.write('<div class="stamp">' +"("+m['u']['username'] +") " 
-                + timestamp[:10]+' ' +timestamp[11:19]  +'</div>\n')
+    for m in messages:
+        outfile.write('<div class="message">\n')
+        outfile.write('<div class="user">' + m['u']['name'] + '</div>\n')
 
-            outfile.write('<div class="content">' + m['msg'] + '</div>\n')
+        timestamp = m['ts'];
 
-            for a in m.get('attachments', []):
+        outfile.write('<div class="stamp">' +"("+m['u']['username'] +") " 
+            + timestamp[:10]+' ' +timestamp[11:19]  +'</div>\n')
 
-                #logger.debug(a)
+        # the actual message
+        outfile.write('<div class="content">' + markdown.markdown(m['msg']) + '</div>\n')
 
-                if 'title_link' in a:
-                    urlname = a.get('title_link')
-                    diskname = urlname
+        # handling replies
+        if 'tmid' in m:
+            rply = m.get("tmid")
+            outfile.write('<div class="reply">')
+            if rply in message_dict:
+                n = message_dict[rply]
+                outfile.write('<div class="reply_message">' + markdown.markdown(n['msg']) + '</div>\n') 
+                outfile.write('<div class="reply_user">' + n['u']['name'] + '</div>\n')
+                outfile.write('<div class="reply_stamp">' +"("+n['u']['username'] +") " 
+                    + n['ts'][:10]+' ' +n['ts'][11:19]  +'</div>\n')
+            else:
+                outfile.write('<div class="reply_error">' + "(original message not found)" + '</div>\n') 
+            outfile.write('</div>')
+        
 
-                    if urlname.startswith(file_prefix):
-                        diskname = urlname[len(file_prefix):]
+    
+        for a in m.get('attachments', []):
 
-                    diskname = diskname.replace('/','-')
+            #logger.debug(a)
 
-                    diskpath = input_dir + file_folder +'/'+ diskname
+            if 'title_link' in a:
+                urlname = a.get('title_link')
+                diskname = urlname
 
-                    if not os.path.isfile( diskpath ):
-                        req = requests.get(rc_server + urlname,
-                            headers={ 'X-Auth-Token': rc_pass , 'X-User-Id': rc_user })
+                if urlname.startswith(file_prefix):
+                    diskname = urlname[len(file_prefix):]
+                        
+                diskname = urllib.parse.unquote(diskname)
+                diskname = re.sub('\s+|\:','_',diskname)                             
 
-                        if req.status_code == 200 :
-                            fout = open( diskpath, 'wb')
-                            fout.write( req.content )
-                            logger.debug('Downloaded: ' +urlname+' --> '+diskname)
-                        else:
-                            logger.warn('Failed download: '+urlname)
+                diskname = diskname.replace('/','-')
 
-                    # no 'else' here, have to check if file was downloaded
-                    if os.path.isfile(diskpath):
-                        outfile.write('<div class="attachment"><a href="'
-                            + diskpath+'">'
-                            + os.path.basename(urlname)
-                            +'</a></div>')
+                diskpath = input_dir + file_folder +'/'+ diskname
+
+                if not os.path.isfile( diskpath ):
+                    req = requests.get(rc_server + urlname,
+                        headers={ 'X-Auth-Token': rc_pass , 'X-User-Id': rc_user })
+
+                    if req.status_code == 200 :
+                        fout = open( diskpath, 'wb')
+                        fout.write( req.content )
+                        logger.debug('Downloaded: ' +urlname+' --> '+diskname)
+                    else:
+                        logger.warn('Failed download: '+urlname)
+
+                # no 'else' here, have to check if file was downloaded
+                if os.path.isfile(diskpath):
+                    outfile.write('<div class="attachment"><a href="'
+                        + diskpath+'">'
+                        + os.path.basename(urllib.parse.unquote(urlname))
+                        +'</a></div>')
+                    
+                    # include preview image
+                    if 'image_type' in a:
+                        outfile.write('<div class="preview"><img class="preview" src="'
+                            + diskpath + '"></div>')
 
 
-            outfile.write('</div>\n')
+
+        outfile.write('</div>\n')
 
 
 

@@ -37,6 +37,8 @@ import configparser
 import json
 import re
 import requests
+import urllib
+import re
 from time import sleep
 from rocketchat_API.rocketchat import RocketChat
 
@@ -235,7 +237,6 @@ def main():
     if rooms_include:
         logger.debug("Included rooms: " + ", ".join(rooms_include))
 
-
     if ( rc_auth == "token"):
         logger.debug('Initialize rocket.chat API connection (token)')
         rocket = RocketChat(auth_token=rc_pass, user_id=rc_user, server_url=rc_server)
@@ -411,15 +412,19 @@ def main():
                     for a in m.get('attachments', []):
                         if 'title_link' in a:
                             urlname = a.get('title_link')
-                            diskname = urlname
 
                             if urlname.startswith(file_prefix):
                                 diskname = urlname[len(file_prefix):]
+
+                            diskname = urllib.parse.unquote(diskname)
+                            diskname = re.sub('\s+|\:','_',diskname)                             
 
                             diskname = diskname.replace('/','-')
                             diskpath = output_dir + file_folder +'/'+ diskname
 
                             if not os.path.isfile( diskpath ):
+                                # TODO: this only works with access tokens. Would need a switching
+                                # statement for the username/password option
                                 req = requests.get(rc_server + urlname,
                                     headers={ 'X-Auth-Token': rc_pass , 'X-User-Id': rc_user })
 

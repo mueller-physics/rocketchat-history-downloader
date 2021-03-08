@@ -12,10 +12,11 @@ div.message {
     position: relative;
 }
 
+
 div.user {
     margin: 2px;
     padding: 2px;
-    background: lightgreen;
+    background: #45a86b;
     width: 300px;
     top: 2px;    
     position: absolute;
@@ -23,7 +24,7 @@ div.user {
 }
 
 div.stamp {
-    background: lightblue;
+    background: #37a3a1;
     margin: 2px;
     padding: 2px;
     width: 300px;
@@ -34,8 +35,65 @@ div.stamp {
     color: blue;
 }   
 
+
 div.content {
     padding: 10px;
     margin-top: 25px;
     
 }
+
+div.attachment {
+    text-align: center;
+    background: lightgray;
+}
+
+div.preview {
+    height: 200px;
+    text-align: center;
+}
+
+img.preview{
+    height: 100%;
+}
+
+
+
+div.reply {
+    background-color: #e2eff9;
+    position: relative;
+    padding: 5px;
+    margin-left: 30px;
+}
+
+div.reply_user {
+    margin: 2px;
+    padding: 2px;
+    background: #89ab96;
+    width: 300px;
+    top: 2px;    
+    position: absolute;
+    color: blue;
+}
+
+div.reply_stamp {
+    background: #7b9c9b;
+    margin: 2px;
+    padding: 2px;
+    width: 300px;
+    right: 2px;
+    top: 2px;    
+    position: absolute;
+    text-align: right;
+    color: blue;
+}   
+
+
+div.reply_message {
+    margin: 5px;
+    color: gray;
+    margin-top: 25px;
+    padding: 10px;
+    background-color: #e2eff9;
+    position: relative;
+}
+
