@@ -44,6 +44,10 @@ div.content {
 
 div.attachment {
     text-align: center;
+    width: 60%;
+    margin-left:20%;
+    margin-right:20%;
+    margin-bottom:10px;
     background: lightgray;
 }
 
@@ -97,3 +101,12 @@ div.reply_message {
     position: relative;
 }
 
+div.avatar {
+    position: absolute;
+    left: -55px;
+    width: 50px;
+}
+
+img.avatar {
+    width: 100%;
+}

@@ -7,6 +7,17 @@ history_statefile = rocketchat-history-statefile.pkl
 ; in the state file
 skip_when_file_exists = False
 
+
+; url prefix for attachments stored on the server, will be removed
+; from local file name when fetching attachments
+file_prefix = /file-upload/
+
+; folder to store attachments in, relative to 'history_output_dir'
+file_folder = attachments
+
+; folder to store avatar images in, relative to 'history_output_dir'
+avatar_folder = avatar
+
 [rc-api]
 
 ; auth = token to use X-Auth-UserId (put in 'user' field)
@@ -18,8 +29,8 @@ skip_when_file_exists = False
 auth = token 
 ; auth = classic
 
-user = username_goes_here
-pass = pwd_goes_here
+user = username_or_userid_goes_here
+pass = pwd_or_token_goes_here
 
 server = https://demo.rocket.chat
 max_msg_count_per_day = 99999
@@ -29,15 +40,25 @@ pause_seconds = 1
 
 
 ; 'rooms' section allows to exclude rooms or only archive
-; a specific list of rooms
+; a specific list of rooms. Use the '-l' option to retrieve a room name list
+; as seen by this tool
+;
 ; exclude = [ "room1", "room2" ]
 ; all room names in the exclude list (json notation) will be skipped
 ; leave empty or do not specify at all to not exclude rooms
-; include = [ "room1", "room2" ]
+;
+: include = [ "room1", "room2" ]
 ; if include is specified and not empty, ONLY rooms that are both in
 ; the include AND not on the exclude list will be archived
+;
+; ims_ownname = your_username
+; if set, "Direct Messages" ('ims' rooms) with only one other user
+; get renamed to 'direct-otherUserName' instead of 'direct-[randomIdString]'
+; use '-l' option to see the renaming in action
 
 [rooms]
 
 ;exclude = [ "room_name", "another uninteresting room" ]
 ;include = [ "room_name", "the only interesting room" ]
+
+; ims_ownname = your_username

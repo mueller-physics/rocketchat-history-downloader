@@ -78,18 +78,40 @@ def incr_by_day_or_month(in_date, month_block):
 
 
 
-def assemble_state(state_array, room_json, room_type):
+def assemble_state(state_array, room_json, room_type, ims_name = None ):
     """Build the state_array that tracks what needs to be saved"""
     for channel in room_json[room_type]:
         if channel['_id'] not in state_array:
+            
+            displayname = channel['_id']
+
+            if 'name' in channel:
+                displayname = channel['name']
+
+            if 'fname' in channel:
+                displayname = channel['fname']
+
+            if room_type == 'ims' and not ims_name == None:
+
+                # renaming a 2-person chat to the username of the other chat partner
+                if not ims_name == None and channel.get('usersCount',-1) == 2:
+                    n = channel.get('usernames', [ displayname, displayname ])
+                    if n[0] == ims_name:
+                        displayname = n[1]
+                    else:
+                        displayname = n[0]
+
+                displayname = 'direct-'+displayname
+
+
             state_array[channel['_id']] = {
-                'name': channel['name'] if 'name' in channel else 'direct-'+channel['_id'],
+                'name': displayname,
                 'type': room_type,
                 'lastsaved': NULL_DATE,
                 'begintime': (datetime
                               .datetime
                               .strptime(channel['ts'], DATE_FORMAT)
-                              .replace(hour=0, minute=0, second=0, microsecond=0))
+                              .replace(hour=0, minute=0, second=0, microsecond=0)),
             }
         # Channels without messages don't have a lm field
         if channel.get('lm'):
@@ -136,6 +158,10 @@ def main():
     argparser_main.add_argument('-r', '--readonlystate',
                                 help='Do not create or update history state file.',
                                 action="store_true")
+    argparser_main.add_argument('-l', '--list',
+                                help='Print a room list (for use in "include" and "exclude") and exit',
+                                action="store_true")
+
     args = argparser_main.parse_args()
 
     start_time = (datetime
@@ -183,6 +209,7 @@ def main():
     file_prefix = config_main.get('files','file_prefix', fallback='');
     file_folder = config_main.get('files','file_folder', fallback='attachments');
 
+    
     # include and exclude rooms
     rooms_exclude = []
     rooms_include = []
@@ -211,6 +238,7 @@ def main():
     logger.propagate = False
     
     room_state = {}
+    
 
     logger.info('BEGIN execution at %s', str(datetime.datetime.today()))
     logger.debug('Command line arguments: %s', pprint.pformat(args))
@@ -253,13 +281,20 @@ def main():
 
     logger.debug('LOAD / UPDATE room state')
     assemble_state(room_state, rocket.channels_list_joined().json(), 'channels')
-    sleep(polite_pause)
 
-    assemble_state(room_state, rocket.im_list().json(), 'ims')
-    sleep(polite_pause)
+    assemble_state(room_state, rocket.im_list().json(), 'ims', ims_name = config_main.get('rooms','ims_ownname', fallback = None))
 
     assemble_state(room_state, rocket.groups_list().json(), 'groups')
+
+    if args.list:
+        for channel_id, channel_data in room_state.items():
+            if channel_id != '_meta':  # skip state metadata which is not a channel
+                logger.info( "subscribed: \""+channel_data['name'] + "\" (type " +channel_data['type'] + ")")
+        return    
+
     sleep(polite_pause)
+
+    userkeys = []
 
     for channel_id, channel_data in room_state.items():
 
@@ -407,7 +442,6 @@ def main():
                 logger.info('Messages found: %s', str(num_messages))
 
                 # attachments download
-
                 for m in history_data['messages']:
                     for a in m.get('attachments', []):
                         if 'title_link' in a:
@@ -434,15 +468,44 @@ def main():
                                     logger.debug('Downloaded attachment: ' +urlname+' --> '+diskname)
                                 else:
                                     logger.warn('Failed to download: '+urlname)
+                                    
+                                sleep(polite_pause)
 
                             else:
                                     logger.debug('Attachment exists: '+diskname)
+
+                # avatar download
+                for m in history_data['messages']:
+                        a =  m.get('u',[]).get('username','none')
+                        
+                        if a in userkeys:
+                                continue
+
+                        diskpath =  output_dir + '/avatar/' + a + '.jpg'
+
+                        if not os.path.isfile(diskpath):
+                                req = requests.get( rc_server + '/avatar/' + a + '?format=jpeg' )
+                                if req.status_code == 200 :
+                                    fout = open( diskpath, 'wb')
+                                    fout.write( req.content )
+                                    logger.debug('Downloaded avatar: ' + a)
+                                    userkeys.append(a)
+                                else:
+                                    logger.warn('Failed to download avatar: '+ a)
+                                sleep(polite_pause)
+                        else:
+                                logger.debug('Avatar on disk:' + a)
+                                userkeys.append(a)
+
+                                 
+
+
 
                 if num_messages > 0:
                     with open(output_dir
                               + outfilename
                               + '-'
-                              + channel_data['name']
+                              + re.sub('\s+','_',channel_data['name'])
                               + '.json', 'wb') as f:
                         f.write(history_data_text.encode('utf-8').strip())
                 elif num_messages > count_max:

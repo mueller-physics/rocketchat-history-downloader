@@ -88,15 +88,24 @@ def main():
 
     for m in messages:
         outfile.write('<div class="message">\n')
+        
+        # the avatar
+        avatar_file =  input_dir + '/avatar/' +  m['u']['username'] + '.jpg'
+        if os.path.isfile( avatar_file ):
+            outfile.write('<div class="avatar"><img class="avatar" src="' + avatar_file + '" /></div>')
+        
+        # full name
         outfile.write('<div class="user">' + m['u']['name'] + '</div>\n')
 
+        # timestamp and username
         timestamp = m['ts'];
-
         outfile.write('<div class="stamp">' +"("+m['u']['username'] +") " 
             + timestamp[:10]+' ' +timestamp[11:19]  +'</div>\n')
 
         # the actual message
         outfile.write('<div class="content">' + markdown.markdown(m['msg']) + '</div>\n')
+
+
 
         # handling replies
         if 'tmid' in m:
@@ -113,7 +122,7 @@ def main():
             outfile.write('</div>')
         
 
-    
+        # handling attachments    
         for a in m.get('attachments', []):
 
             #logger.debug(a)
