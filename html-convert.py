@@ -102,8 +102,15 @@ def main():
         outfile.write('<div class="stamp">' +"("+m['u']['username'] +") " 
             + timestamp[:10]+' ' +timestamp[11:19]  +'</div>\n')
 
-        # the actual message
-        outfile.write('<div class="content">' + markdown.markdown(m['msg']) + '</div>\n')
+        # handing 'left room' and 'joind room' events
+        if 't' in m:
+            if m['t'] == 'ul':
+                outfile.write('<div class="room_event">has left the room</div>')
+            if m['t'] == 'uj':
+                outfile.write('<div class="room_event">has joined the room</div>')
+        else:
+            # the actual message
+            outfile.write('<div class="content">' + markdown.markdown(m['msg']) + '</div>\n')
 
 
 
